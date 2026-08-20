@@ -57,6 +57,34 @@ class Producto:
             raise ValueError("El precio del producto debe ser mayor que cero.")
         self._precio = float(valor)
 
+    def a_diccionario(self) -> dict[str, object]:
+        """Convierte el producto a un diccionario para persistirlo en JSON."""
+        return {
+            "codigo": self.codigo,
+            "nombre": self.nombre,
+            "categoria": self.categoria,
+            "precio": self.precio,
+        }
+
+    @classmethod
+    def desde_diccionario(cls, registro: dict[str, object]) -> "Producto":
+        """Reconstruye un objeto Producto a partir de un diccionario.
+
+        Args:
+            registro: Diccionario con las claves codigo, nombre, categoria y
+                precio. Si falta alguna clave se propaga un KeyError; si algún
+                valor no es válido se propaga un ValueError o TypeError.
+
+        Returns:
+            Una nueva instancia de Producto con los datos del registro.
+        """
+        return cls(
+            codigo=str(registro["codigo"]),
+            nombre=str(registro["nombre"]),
+            categoria=str(registro["categoria"]),
+            precio=float(registro["precio"]),
+        )
+
     def mostrar_informacion(self) -> None:
         """Muestra la información del producto."""
         print(f"  Código: {self.codigo}")

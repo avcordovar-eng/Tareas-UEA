@@ -1,4 +1,4 @@
-# Sistema de Restaurante - Proyecto de POO en Python (Semana 9)
+# Sistema de Restaurante - Proyecto de POO en Python (Semana 10)
 
 ## Información del Estudiante
 
@@ -8,78 +8,114 @@
 
 Sistema de administración básica de productos y usuarios de un restaurante, desarrollado con Programación Orientada a Objetos en Python. El programa se ejecuta mediante un menú interactivo desde consola y administra colecciones de objetos (productos y usuarios) implementadas con las estructuras de datos fundamentales de Python: `list`, `tuple`, `dict` y `set`.
 
-La mejora principal de esta semana consiste en pasar del manejo de objetos individuales a la administración organizada de colecciones de objetos y datos. El servicio `Restaurante` concentra todas las operaciones de registro, búsqueda, actualización, eliminación y listado, manteniendo a `main.py` únicamente como punto de interacción por consola.
+La mejora principal de la Semana 10 consiste en incorporar **persistencia de productos mediante un archivo JSON**. Antes, la colección de productos existía únicamente durante la ejecución del programa; ahora, al cerrar la aplicación los productos se conservan en `datos/productos.json` y se recuperan nuevamente al iniciar una nueva ejecución, reconstruyéndose como objetos `Producto`. Los usuarios permanecen solo en memoria durante esta semana, como se solicita en la actividad.
 
 ## Estructura del Proyecto
 
 ```
 restaurante_app/
+├── datos/
+│   └── productos.json
 ├── modelos/
 │   ├── __init__.py
 │   ├── producto.py
 │   └── usuario.py
 ├── servicios/
 │   ├── __init__.py
+│   ├── archivo_servicio.py
 │   └── restaurante.py
 ├── main.py
 └── README.md
 ```
 
+La carpeta `datos/` se utiliza únicamente como ubicación para almacenar `productos.json`. No representa una nueva capa de la arquitectura del sistema.
+
 ## Responsabilidad de cada Componente
 
 ### `modelos/producto.py` - Clase `Producto`
-Entidad que representa un producto del restaurante. Sus atributos son: `codigo`, `nombre`, `categoria` y `precio`. Utiliza propiedades (`@property`) con validaciones que garantizan la integridad de los datos (campos no vacíos y precio mayor que cero). Implementa `mostrar_informacion()` y `__str__()` para su presentación.
+Entidad que representa un producto del restaurante. Sus atributos son: `codigo`, `nombre`, `categoria` y `precio`. Utiliza propiedades (`@property`) con validaciones que garantizan la integridad de los datos (campos no vacíos y precio mayor que cero). Además incorpora dos métodos para la persistencia:
+- `a_diccionario()`: convierte la información del objeto a un diccionario para poder guardarla en JSON.
+- `desde_diccionario(registro)`: método de clase que reconstruye un objeto `Producto` a partir de un diccionario recuperado del archivo.
 
 ### `modelos/usuario.py` - Clase `Usuario`
-Entidad general que representa a una persona registrada en el sistema. Sus atributos son: `identificacion`, `nombre` y `correo`. Representa de forma general a los usuarios, de modo que el proyecto pueda evolucionar posteriormente hacia clientes, empleados o administradores sin necesidad de implementar todavía una jerarquía adicional. Incluye validación del correo electrónico y de campos vacíos.
+Entidad general que representa a una persona registrada en el sistema. Sus atributos son: `identificacion`, `nombre` y `correo`. Su información no se persiste en esta actividad.
 
 ### `servicios/restaurante.py` - Clase `Restaurante`
-Servicio encargado de administrar las colecciones y operaciones del sistema. Mantiene dos listas internas: `_productos` (de tipo `list[Producto]`) y `_usuarios` (de tipo `list[Usuario]`). Proporciona los métodos:
-- `registrar_producto()` y `registrar_usuario()`: agregan elementos evitando códigos e identificaciones duplicados.
-- `buscar_producto()`: busca un producto por su código.
-- `actualizar_producto()`: actualiza nombre, categoría y precio de un producto existente.
-- `eliminar_producto()`: elimina un producto por su código.
-- `listar_productos()` y `listar_usuarios()`: muestran todas las colecciones.
-- `obtener_categorias()`: retorna las categorías únicas de los productos mediante un conjunto.
+Servicio encargado de administrar las colecciones y operaciones del sistema. Mantiene dos listas internas: `_productos` (de tipo `list[Producto]`) y `_usuarios` (de tipo `list[Usuario]`). Proporciona los métodos de registro, búsqueda, actualización, eliminación y listado. Esta semana incorpora `cargar_productos()` para incorporar a la colección los objetos `Producto` reconstruidos desde el archivo, evitando duplicados. Todas las operaciones sobre las colecciones se realizan exclusivamente a través de sus métodos.
 
-`main.py` no modifica directamente las listas internas; todas las operaciones sobre las colecciones se realizan exclusivamente a través de los métodos del servicio.
+### `servicios/archivo_servicio.py` - Clase `ArchivoServicio`
+Servicio encargado de concentrar la lectura y escritura de `datos/productos.json`:
+- `cargar_productos()`: utiliza `json.load()` para recuperar los registros almacenados, valida cada registro y reconstruye los objetos `Producto`.
+- `guardar_productos()`: convierte la colección de objetos `Producto` a una lista de diccionarios y la escribe mediante `json.dump()`.
+
+Ambos métodos utilizan `with open()` y `encoding="utf-8"`, y controlan de forma específica las excepciones de acceso a archivos y de formato.
 
 ### `main.py`
-Punto de arranque del programa. Coordina el menú interactivo y la interacción por consola: muestra las opciones, solicita los datos mediante `input()`, crea los objetos `Producto` y `Usuario`, y delega en el servicio `Restaurante`. Organiza las opciones mediante funciones y evita una cadena extensa de condicionales, ya que cada opción del menú se asocia con su función a través de un diccionario.
+Punto de arranque del programa. Coordina el menú interactivo y la interacción por consola: muestra las opciones, solicita los datos mediante `input()`, crea los objetos `Producto` y `Usuario`, y delega en el servicio `Restaurante`. Además coordina la persistencia: al iniciar crea un `ArchivoServicio`, carga los productos almacenados y los entrega al servicio `Restaurante`; después de registrar, actualizar o eliminar un producto correctamente solicita el guardado de la colección. `main.py` nunca modifica directamente las listas internas del servicio.
 
-## Estructuras de Datos Aplicadas
+## Funcionamiento de datos/productos.json
 
-### `list` (Lista)
-- **Dónde:** `servicios/restaurante.py`.
-- **Para qué:** Se utiliza para administrar las colecciones dinámicas de objetos del sistema. `Restaurante` mantiene una `list[Producto]` (`_productos`) y una `list[Usuario]` (`_usuarios`). Son colecciones dinámicas porque se agregan y eliminan elementos durante la ejecución mediante los métodos de registro, actualización y eliminación.
+`datos/productos.json` es un archivo de texto con formato JSON que almacena la colección de productos como una **lista de diccionarios**. Cada diccionario representa un producto con las claves `codigo`, `nombre`, `categoria` y `precio`:
 
-### `tuple` (Tupla)
-- **Dónde:** `main.py`, constante `OPCIONES_MENU`.
-- **Para qué:** Representa información estable que no debe modificarse durante la ejecución: las opciones disponibles del menú principal. Al ser inmutable, se garantiza que la estructura del menú permanezca fija mientras el programa se ejecuta, y se utiliza tanto para mostrar las opciones en pantalla como para organizar la salida.
+```json
+[
+    {
+        "codigo": "P001",
+        "nombre": "Hamburguesa",
+        "categoria": "Comida rápida",
+        "precio": 5.5
+    }
+]
+```
 
-### `dict` (Diccionario)
-- **Dónde:** `main.py`, constante `ACCIONES_MENU`.
-- **Para qué:** Establece una relación clara de clave → valor: cada opción del menú (clave, ej. `"1"` o `"2"`) se asocia con la función encargada de ejecutarla (valor). Esto evita una cadena extensa de `if/elif` y permite despachar la opción seleccionada de forma directa y ordenada.
+El archivo es un medio de persistencia y no reemplaza la clase `Producto`: durante la ejecución el programa continúa trabajando con objetos, y la conversión a diccionarios ocurre solo en el momento de guardar o cargar.
 
-### `set` (Conjunto)
-- **Dónde:** `servicios/restaurante.py`, método `obtener_categorias()`.
-- **Para qué:** Retorna las categorías únicas de los productos registrados. El conjunto elimina automáticamente los valores duplicados, garantizando que cada categoría se muestre una sola vez sin necesidad de verificaciones manuales.
-
-## Flujo del Sistema
+## Flujo de Carga
 
 ```
-Usuario selecciona una opción
+Inicio de la aplicación
         ↓
-main.py solicita o recibe los datos necesarios
+main.py crea ArchivoServicio
         ↓
-main.py utiliza el servicio Restaurante
+Se intenta leer datos/productos.json
         ↓
-Restaurante procesa la operación solicitada
+json.load() recupera la información
         ↓
-Se consulta o modifica la colección correspondiente
+Se valida la estructura obtenida
         ↓
-main.py presenta el resultado al usuario
+Cada registro válido se convierte en Producto(...)
+        ↓
+Los objetos se entregan al servicio Restaurante
+        ↓
+El menú trabaja normalmente con objetos Producto
 ```
+
+## Flujo de Guardado
+
+```
+Usuario registra, actualiza o elimina un producto
+        ↓
+main.py solicita la operación al servicio Restaurante
+        ↓
+Restaurante modifica la colección en memoria
+        ↓
+Los objetos Producto se convierten a diccionarios
+        ↓
+ArchivoServicio utiliza json.dump()
+        ↓
+Se actualiza datos/productos.json
+```
+
+## Excepciones Controladas
+
+- `FileNotFoundError`: si `productos.json` todavía no existe, el programa inicia normalmente con una colección vacía.
+- `json.JSONDecodeError`: si el archivo existe pero su contenido no es un JSON válido, se muestra un mensaje y el programa inicia con la colección vacía.
+- `PermissionError`: cuando no existen permisos suficientes para leer o escribir el archivo.
+- `KeyError`: al reconstruir productos cuando un registro no contiene alguna de las claves esperadas; el registro defectuoso se ignora sin detener la aplicación.
+- `ValueError` / `TypeError`: para datos inválidos, tanto en las validaciones propias de `Producto` como al reconstruir registros; se ignora el registro defectuoso y se continúa con los demás.
+- `ValueError`: también se mantiene en `main.py` para impedir que precios no numéricos o campos vacíos detengan el programa.
+
+No se utilizan capturas genéricas ni `except: pass`; cada excepción responde a una situación concreta del programa y evita que un problema esperado detenga abruptamente toda la aplicación.
 
 ## Menú Interactivo
 
@@ -113,6 +149,21 @@ main.py presenta el resultado al usuario
    ```
 4. Seleccione una opción del menú para registrar, buscar, actualizar o eliminar productos; registrar o listar usuarios; o mostrar las categorías únicas. El programa continúa en ejecución hasta que el usuario selecciona la opción `9. Salir`.
 
+## Comprobación de la Persistencia
+
+Para verificar que los productos permanecen disponibles después de cerrar y volver a iniciar la aplicación, se realizó la siguiente prueba:
+
+1. Se ejecutó `main.py`.
+2. Se registraron productos mediante el menú (código, nombre, categoría y precio).
+3. Se verificó que `datos/productos.json` contenía la información de los productos registrados.
+4. Se cerró completamente el programa.
+5. Se volvió a ejecutar `main.py`.
+6. Se seleccionó la opción `5. Listar productos` y los productos anteriores aparecieron sin necesidad de volver a ingresarlos.
+7. Se actualizó el precio de un producto y luego se eliminó otro.
+8. Se reinició nuevamente la aplicación y se confirmó que tanto la actualización como la eliminación también se conservaron.
+
+También se comprobó el manejo controlado de casos especiales: inicio sin el archivo, un archivo con contenido JSON inválido y registros incompletos, confirmando que en todos los casos el programa responde con un mensaje claro y continúa ejecutándose.
+
 ## Validaciones Consideradas
 
 - Los códigos de productos no pueden repetirse.
@@ -121,7 +172,8 @@ main.py presenta el resultado al usuario
 - El precio debe ser un número mayor que cero.
 - El correo electrónico debe contener el carácter `@`.
 - Las entradas incorrectas (opciones inválidas, precios no numéricos) no detienen el programa; muestran un mensaje de error y permiten continuar.
+- Un registro defectuoso o incompleto en `productos.json` se ignora sin detener innecesariamente la aplicación.
 
 ## Reflexión
 
-La selección de una estructura de datos adecuada es una decisión de diseño tan importante como el propio algoritmo, porque cada estructura ofrece ventajas y limitaciones distintas según la necesidad del problema. En este proyecto, la `list` fue la opción correcta para las colecciones de productos y usuarios porque el sistema requiere agregar, recorrer y eliminar elementos de forma dinámica manteniendo el orden de inserción. La `tuple` garantizó la estabilidad de las opciones del menú al ser inmutable: el catálogo de opciones no puede modificarse accidentalmente durante la ejecución. El `dict` simplificó el despacho de acciones al asociar directamente cada opción con su función, evitando cadenas largas de condicionales y haciendo el código más legible y escalable. Finalmente, el `set` resolvió de manera elegante la necesidad de mostrar categorías únicas sin duplicados. Elegir mal una estructura puede llevar a un desempeño deficiente, código confuso o errores sutiles; por ello comprender las propiedades de cada estructura y su relación con la operación requerida es fundamental para construir soluciones claras y eficientes.
+La persistencia mediante JSON separa la responsabilidad del almacenamiento de la lógica de dominio: la clase `Producto` sigue siendo la representación del dominio durante toda la ejecución, el servicio `Restaurante` administra las colecciones con operaciones propias del negocio y el nuevo `ArchivoServicio` concentra exclusivamente la lectura y escritura del archivo. Este desacoplamiento permite evolucionar cada parte de forma independiente. El manejo de excepciones específicas convierte los problemas esperados de acceso a archivos (inexistencia, permisos, formato inválido o registros incompletos) en mensajes controlados en lugar de fallas abruptas, manteniendo la aplicación utilizable incluso cuando los datos externos no están en las mejores condiciones. Comprender cuándo transformar objetos a diccionarios y volver a reconstruirlos es la base para cualquier sistema que necesite conservar su estado más allá de la memoria temporal del programa.

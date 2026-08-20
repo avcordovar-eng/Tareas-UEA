@@ -28,6 +28,23 @@ class Restaurante:
         """Devuelve una copia de la lista interna de usuarios."""
         return list(self._usuarios)
 
+    def cargar_productos(self, productos: list[Producto]) -> None:
+        """Incorpora los productos recuperados desde el archivo JSON.
+
+        Se evita cargar dos veces un producto cuyo código ya existe en la
+        colección, manteniendo la unicidad que exige el registro normal.
+
+        Args:
+            productos: Lista de objetos Producto reconstruidos al iniciar
+                la aplicación.
+        """
+        for producto in productos:
+            if self.buscar_producto(producto.codigo) is not None:
+                print(f"Advertencia: el producto con código '{producto.codigo}' "
+                      f"ya existía y no se cargó nuevamente.")
+                continue
+            self._productos.append(producto)
+
     def registrar_producto(self, producto: Producto) -> bool:
         """Registra un producto evitando códigos duplicados.
 

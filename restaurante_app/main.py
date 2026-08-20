@@ -3,6 +3,9 @@
 
 Responsable únicamente de la interacción por consola: muestra el menú,
 solicita datos, crea los objetos y delega en el servicio Restaurante.
+Además coordina la persistencia: carga los productos almacenados al
+iniciar la aplicación y solicita su guardado después de cada operación
+que modifica la colección.
 No administra directamente las colecciones internas del servicio.
 """
 
@@ -10,6 +13,7 @@ from typing import Callable
 
 from modelos.producto import Producto
 from modelos.usuario import Usuario
+from servicios.archivo_servicio import ArchivoServicio
 from servicios.restaurante import Restaurante
 
 
@@ -38,7 +42,16 @@ def mostrar_menu() -> str:
     return input("Seleccione una opción (1-9): ").strip()
 
 
-def registrar_producto(restaurante: Restaurante) -> None:
+def persistir_productos(archivo_servicio: ArchivoServicio,
+                        restaurante: Restaurante) -> None:
+    """Solicita a ArchivoServicio guardar el estado actual de los productos."""
+    if not archivo_servicio.guardar_productos(restaurante.productos):
+        print("Advertencia: no se pudo actualizar datos/productos.json "
+              "con los últimos cambios.")
+
+
+def registrar_producto(restaurante: Restaurante,
+                       archivo_servicio: ArchivoServicio) -> None:
     """Solicita los datos y registra un nuevo producto."""
     print("\n--- Registrar Producto ---")
     codigo = input("Código del producto: ").strip()
@@ -62,11 +75,13 @@ def registrar_producto(restaurante: Restaurante) -> None:
         producto = Producto(codigo, nombre, categoria, precio)
         if restaurante.registrar_producto(producto):
             print(f"Producto '{producto.nombre}' registrado exitosamente.")
+            persistir_productos(archivo_servicio, restaurante)
     except ValueError as e:
         print(f"Error: {e}")
 
 
-def buscar_producto(restaurante: Restaurante) -> None:
+def buscar_producto(restaurante: Restaurante,
+                    archivo_servicio: ArchivoServicio) -> None:
     """Solicita un código y muestra el producto correspondiente."""
     print("\n--- Buscar Producto ---")
     codigo = input("Código del producto a buscar: ").strip()
@@ -81,7 +96,8 @@ def buscar_producto(restaurante: Restaurante) -> None:
     producto.mostrar_informacion()
 
 
-def actualizar_producto(restaurante: Restaurante) -> None:
+def actualizar_producto(restaurante: Restaurante,
+                        archivo_servicio: ArchivoServicio) -> None:
     """Solicita un código y los nuevos datos para actualizar un producto."""
     print("\n--- Actualizar Producto ---")
     codigo = input("Código del producto a actualizar: ").strip()
@@ -108,11 +124,13 @@ def actualizar_producto(restaurante: Restaurante) -> None:
     try:
         if restaurante.actualizar_producto(codigo, nombre, categoria, precio_nuevo):
             print(f"Producto '{nombre}' actualizado exitosamente.")
+            persistir_productos(archivo_servicio, restaurante)
     except ValueError as e:
         print(f"Error: {e}")
 
 
-def eliminar_producto(restaurante: Restaurante) -> None:
+def eliminar_producto(restaurante: Restaurante,
+                      archivo_servicio: ArchivoServicio) -> None:
     """Solicita un código y elimina el producto correspondiente."""
     print("\n--- Eliminar Producto ---")
     codigo = input("Código del producto a eliminar: ").strip()
@@ -121,16 +139,19 @@ def eliminar_producto(restaurante: Restaurante) -> None:
         return
     if restaurante.eliminar_producto(codigo):
         print(f"Producto con código '{codigo}' eliminado exitosamente.")
+        persistir_productos(archivo_servicio, restaurante)
     else:
         print(f"No se encontró ningún producto con el código '{codigo}'.")
 
 
-def listar_productos(restaurante: Restaurante) -> None:
+def listar_productos(restaurante: Restaurante,
+                     archivo_servicio: ArchivoServicio) -> None:
     """Solicita al servicio el listado de productos."""
     restaurante.listar_productos()
 
 
-def registrar_usuario(restaurante: Restaurante) -> None:
+def registrar_usuario(restaurante: Restaurante,
+                      archivo_servicio: ArchivoServicio) -> None:
     """Solicita los datos y registra un nuevo usuario."""
     print("\n--- Registrar Usuario ---")
     identificacion = input("Identificación del usuario: ").strip()
@@ -153,12 +174,14 @@ def registrar_usuario(restaurante: Restaurante) -> None:
         print(f"Error: {e}")
 
 
-def listar_usuarios(restaurante: Restaurante) -> None:
+def listar_usuarios(restaurante: Restaurante,
+                    archivo_servicio: ArchivoServicio) -> None:
     """Solicita al servicio el listado de usuarios."""
     restaurante.listar_usuarios()
 
 
-def mostrar_categorias(restaurante: Restaurante) -> None:
+def mostrar_categorias(restaurante: Restaurante,
+                       archivo_servicio: ArchivoServicio) -> None:
     """Muestra las categorías únicas de los productos registrados."""
     print("\n--- Categorías de Productos ---")
     categorias = restaurante.obtener_categorias()
@@ -169,7 +192,7 @@ def mostrar_categorias(restaurante: Restaurante) -> None:
         print(f"- {categoria}")
 
 
-ACCIONES_MENU: dict[str, Callable[[Restaurante], None]] = {
+ACCIONES_MENU: dict[str, Callable[[Restaurante, ArchivoServicio], None]] = {
     "1": registrar_producto,
     "2": buscar_producto,
     "3": actualizar_producto,
@@ -182,8 +205,11 @@ ACCIONES_MENU: dict[str, Callable[[Restaurante], None]] = {
 
 
 def main() -> None:
-    """Función principal que coordina el menú y las acciones del sistema."""
+    """Función principal que coordina la carga, el menú y el guardado."""
+    archivo_servicio = ArchivoServicio()
     restaurante = Restaurante("Mi Restaurante")
+    productos_cargados = archivo_servicio.cargar_productos()
+    restaurante.cargar_productos(productos_cargados)
     print("¡Bienvenido al Sistema de Restaurante!")
     while True:
         opcion = mostrar_menu()
@@ -194,7 +220,7 @@ def main() -> None:
         if accion is None:
             print("Opción inválida. Por favor, seleccione una opción del 1 al 9.")
             continue
-        accion(restaurante)
+        accion(restaurante, archivo_servicio)
 
 
 if __name__ == "__main__":
