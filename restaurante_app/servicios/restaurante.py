@@ -2,21 +2,23 @@
 
 from modelos.producto import Producto
 from modelos.usuario import Usuario
+from modelos.venta import Venta
 
 
 class Restaurante:
     """Servicio encargado de administrar las colecciones y operaciones del sistema.
 
-    Gestiona una lista de productos y una lista de usuarios. Todos los
-    registros, búsquedas, actualizaciones, eliminaciones y consultas se
-    realizan a través de los métodos de esta clase; main.py nunca manipula
-    directamente las listas internas.
+    Gestiona una lista de productos, una lista de usuarios y una lista de
+    ventas. Todos los registros, búsquedas, actualizaciones, eliminaciones
+    y consultas se realizan a través de los métodos de esta clase; main.py
+    nunca manipula directamente las listas internas.
     """
 
     def __init__(self, nombre: str) -> None:
         self.nombre: str = nombre
         self._productos: list[Producto] = []
         self._usuarios: list[Usuario] = []
+        self._ventas: list[Venta] = []
 
     @property
     def productos(self) -> list[Producto]:
@@ -27,6 +29,11 @@ class Restaurante:
     def usuarios(self) -> list[Usuario]:
         """Devuelve una copia de la lista interna de usuarios."""
         return list(self._usuarios)
+
+    @property
+    def ventas(self) -> list[Venta]:
+        """Devuelve una copia de la lista interna de ventas."""
+        return list(self._ventas)
 
     def cargar_productos(self, productos: list[Producto]) -> None:
         """Incorpora los productos recuperados desde el archivo JSON.
@@ -44,6 +51,29 @@ class Restaurante:
                       f"ya existía y no se cargó nuevamente.")
                 continue
             self._productos.append(producto)
+
+    def cargar_usuarios(self, usuarios: list[Usuario]) -> None:
+        """Incorpora los usuarios recuperados desde el archivo JSON.
+
+        Args:
+            usuarios: Lista de objetos Usuario reconstruidos al iniciar
+                la aplicación.
+        """
+        for usuario in usuarios:
+            if self.buscar_usuario(usuario.identificacion) is not None:
+                print(f"Advertencia: el usuario con identificación '{usuario.identificacion}' "
+                      f"ya existía y no se cargó nuevamente.")
+                continue
+            self._usuarios.append(usuario)
+
+    def cargar_ventas(self, ventas: list[Venta]) -> None:
+        """Incorpora las ventas recuperadas desde el archivo JSON.
+
+        Args:
+            ventas: Lista de objetos Venta reconstruidos al iniciar
+                la aplicación.
+        """
+        self._ventas.extend(ventas)
 
     def registrar_producto(self, producto: Producto) -> bool:
         """Registra un producto evitando códigos duplicados.
@@ -129,6 +159,89 @@ class Restaurante:
         for i, usuario in enumerate(self._usuarios, 1):
             print(f"{i}. {usuario.nombre} - Identificación: "
                   f"{usuario.identificacion} - Correo: {usuario.correo}")
+
+    def buscar_usuario(self, identificacion: str) -> Usuario | None:
+        """Busca un usuario por su identificación.
+
+        Returns:
+            El usuario encontrado o None si no existe.
+        """
+        for usuario in self._usuarios:
+            if usuario.identificacion == identificacion.strip():
+                return usuario
+        return None
+
+    def vender_producto(self, codigo_producto: str, identificacion_usuario: str,
+                        cantidad: int) -> bool:
+        """Realiza la venta de un producto a un usuario.
+
+        Valida que el usuario exista, el producto exista, la cantidad sea
+        válida y haya stock suficiente. Si todo es correcto, registra la
+        venta, disminuye el stock y retorna True.
+
+        Returns:
+            True si la venta se realizó correctamente, False en caso contrario.
+        """
+        usuario = self.buscar_usuario(identificacion_usuario)
+        producto = self.buscar_producto(codigo_producto)
+
+        if usuario is None:
+            print(f"Error: No se encontró un usuario con identificación "
+                  f"'{identificacion_usuario}'.")
+            return False
+
+        if producto is None:
+            print(f"Error: No se encontró un producto con el código "
+                  f"'{codigo_producto}'.")
+            return False
+
+        if cantidad <= 0:
+            print("Error: La cantidad debe ser mayor que cero.")
+            return False
+
+        if producto.stock < cantidad:
+            print(f"Error: Stock insuficiente. Disponible: {producto.stock}, "
+                  f"Solicitado: {cantidad}.")
+            return False
+
+        venta = Venta(usuario.identificacion, producto.codigo, cantidad)
+        self._ventas.append(venta)
+        producto.vender(cantidad)
+        print(f"Venta realizada: {producto.nombre} x{cantidad} para "
+              f"{usuario.nombre}.")
+        return True
+
+    def consultar_ventas_usuario(self, identificacion_usuario: str) -> list[Venta]:
+        """Obtiene las ventas realizadas por un usuario.
+
+        Args:
+            identificacion_usuario: Identificación del usuario a consultar.
+
+        Returns:
+            Lista de ventas del usuario (puede estar vacía).
+        """
+        ventas_usuario: list[Venta] = []
+        for venta in self._ventas:
+            if venta.usuario_id == identificacion_usuario:
+                ventas_usuario.append(venta)
+        return ventas_usuario
+
+    def listar_ventas_usuario(self, identificacion_usuario: str) -> None:
+        """Muestra las ventas realizadas por un usuario."""
+        ventas = self.consultar_ventas_usuario(identificacion_usuario)
+        usuario = self.buscar_usuario(identificacion_usuario)
+        if usuario is None:
+            print(f"Error: No se encontró un usuario con identificación "
+                  f"'{identificacion_usuario}'.")
+            return
+        if not ventas:
+            print(f"No hay ventas registradas para {usuario.nombre}.")
+            return
+        print(f"\n--- Ventas de {usuario.nombre} ({identificacion_usuario}) ---")
+        for venta in ventas:
+            producto = self.buscar_producto(venta.producto_codigo)
+            nombre_producto = producto.nombre if producto else "Producto eliminado"
+            print(f"- {nombre_producto} ({venta.producto_codigo}) x{venta.cantidad}")
 
     def obtener_categorias(self) -> set[str]:
         """Retorna el conjunto de categorías únicas de los productos.

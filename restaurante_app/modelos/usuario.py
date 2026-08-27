@@ -55,6 +55,32 @@ class Usuario:
         print(f"  Nombre: {self.nombre}")
         print(f"  Correo: {self.correo}")
 
+    def a_diccionario(self) -> dict[str, object]:
+        """Convierte el usuario a un diccionario para persistirlo en JSON."""
+        return {
+            "identificacion": self.identificacion,
+            "nombre": self.nombre,
+            "correo": self.correo,
+        }
+
+    @classmethod
+    def desde_diccionario(cls, registro: dict[str, object]) -> "Usuario":
+        """Reconstruye un objeto Usuario a partir de un diccionario.
+
+        Args:
+            registro: Diccionario con las claves identificacion, nombre y
+                correo. Si falta alguna clave se propaga un KeyError; si algún
+                valor no es válido se propaga un ValueError o TypeError.
+
+        Returns:
+            Una nueva instancia de Usuario con los datos del registro.
+        """
+        return cls(
+            identificacion=str(registro["identificacion"]),
+            nombre=str(registro["nombre"]),
+            correo=str(registro["correo"]),
+        )
+
     def __str__(self) -> str:
         return f"{self.nombre} ({self.correo}) - ID: {self.identificacion}"
 

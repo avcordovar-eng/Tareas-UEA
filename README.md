@@ -1,4 +1,4 @@
-# Sistema de Restaurante - Proyecto de POO en Python (Semana 10)
+# Sistema de Restaurante - Proyecto de POO en Python (Semana 11)
 
 ## Información del Estudiante
 
@@ -6,20 +6,23 @@
 
 ## Descripción del Sistema
 
-Sistema de administración básica de productos y usuarios de un restaurante, desarrollado con Programación Orientada a Objetos en Python. El programa se ejecuta mediante un menú interactivo desde consola y administra colecciones de objetos (productos y usuarios) implementadas con las estructuras de datos fundamentales de Python: `list`, `tuple`, `dict` y `set`.
+Sistema de administración de productos, usuarios y ventas de un restaurante, desarrollado con Programación Orientada a Objetos en Python. El programa se ejecuta mediante un menú interactivo desde consola y administra colecciones de objetos (productos, usuarios y ventas) implementadas con las estructuras de datos fundamentales de Python: `list`, `tuple`, `dict` y `set`.
 
-La mejora principal de la Semana 10 consiste en incorporar **persistencia de productos mediante un archivo JSON**. Antes, la colección de productos existía únicamente durante la ejecución del programa; ahora, al cerrar la aplicación los productos se conservan en `datos/productos.json` y se recuperan nuevamente al iniciar una nueva ejecución, reconstruyéndose como objetos `Producto`. Los usuarios permanecen solo en memoria durante esta semana, como se solicita en la actividad.
+La mejora principal de la Semana 11 consiste en incorporar **persistencia completa de productos, usuarios y ventas mediante archivos JSON**, y la operación de **venta** que relaciona un usuario con un producto, controla el stock disponible y registra la transacción. Ahora, al cerrar la aplicación, toda la información se conserva en `datos/productos.json`, `datos/usuarios.json` y `datos/ventas.json`, y se recupera nuevamente al iniciar una nueva ejecución, reconstruyéndose como objetos `Producto`, `Usuario` y `Venta`.
 
 ## Estructura del Proyecto
 
 ```
 restaurante_app/
 ├── datos/
-│   └── productos.json
+│   ├── productos.json
+│   ├── usuarios.json
+│   └── ventas.json
 ├── modelos/
 │   ├── __init__.py
 │   ├── producto.py
-│   └── usuario.py
+│   ├── usuario.py
+│   └── venta.py
 ├── servicios/
 │   ├── __init__.py
 │   ├── archivo_servicio.py
@@ -28,94 +31,99 @@ restaurante_app/
 └── README.md
 ```
 
-La carpeta `datos/` se utiliza únicamente como ubicación para almacenar `productos.json`. No representa una nueva capa de la arquitectura del sistema.
+La carpeta `datos/` se utiliza únicamente como ubicación para almacenar los archivos JSON. No representa una nueva capa de la arquitectura del sistema.
 
 ## Responsabilidad de cada Componente
 
 ### `modelos/producto.py` - Clase `Producto`
-Entidad que representa un producto del restaurante. Sus atributos son: `codigo`, `nombre`, `categoria` y `precio`. Utiliza propiedades (`@property`) con validaciones que garantizan la integridad de los datos (campos no vacíos y precio mayor que cero). Además incorpora dos métodos para la persistencia:
+Entidad que representa un producto del restaurante. Sus atributos son: `codigo`, `nombre`, `categoria`, `precio` y `stock`. Utiliza propiedades (`@property`) con validaciones que garantizan la integridad de los datos (campos no vacíos, precio mayor que cero y stock no negativo). Incorpora el método `vender(cantidad)` que disminuye el stock validando disponibilidad. Además incorpora dos métodos para la persistencia:
 - `a_diccionario()`: convierte la información del objeto a un diccionario para poder guardarla en JSON.
 - `desde_diccionario(registro)`: método de clase que reconstruye un objeto `Producto` a partir de un diccionario recuperado del archivo.
 
 ### `modelos/usuario.py` - Clase `Usuario`
-Entidad general que representa a una persona registrada en el sistema. Sus atributos son: `identificacion`, `nombre` y `correo`. Su información no se persiste en esta actividad.
+Entidad general que representa a una persona registrada en el sistema. Sus atributos son: `identificacion`, `nombre` y `correo`. Incorpora dos métodos para la persistencia:
+- `a_diccionario()`: convierte la información del objeto a un diccionario.
+- `desde_diccionario(registro)`: método de clase que reconstruye un objeto `Usuario` a partir de un diccionario.
+
+### `modelos/venta.py` - Clase `Venta`
+Nueva entidad que representa la relación entre un usuario y un producto vendido. Sus atributos son: `usuario_id` (identificación del usuario), `producto_codigo` (código del producto) y `cantidad` (unidades vendidas). Utiliza propiedades con validaciones (campos no vacíos y cantidad mayor que cero). Incorpora dos métodos para la persistencia:
+- `a_diccionario()`: convierte la venta a un diccionario para JSON.
+- `desde_diccionario(registro)`: reconstruye un objeto `Venta` desde un diccionario.
 
 ### `servicios/restaurante.py` - Clase `Restaurante`
-Servicio encargado de administrar las colecciones y operaciones del sistema. Mantiene dos listas internas: `_productos` (de tipo `list[Producto]`) y `_usuarios` (de tipo `list[Usuario]`). Proporciona los métodos de registro, búsqueda, actualización, eliminación y listado. Esta semana incorpora `cargar_productos()` para incorporar a la colección los objetos `Producto` reconstruidos desde el archivo, evitando duplicados. Todas las operaciones sobre las colecciones se realizan exclusivamente a través de sus métodos.
+Servicio encargado de administrar las colecciones y operaciones del sistema. Mantiene tres listas internas: `_productos` (`list[Producto]`), `_usuarios` (`list[Usuario]`) y `_ventas` (`list[Venta]`). Proporciona métodos de registro, búsqueda, actualización, eliminación y listado. Esta semana incorpora:
+- `cargar_productos()`, `cargar_usuarios()`, `cargar_ventas()`: incorporan los objetos reconstruidos desde los archivos, evitando duplicados en productos y usuarios.
+- `vender_producto(codigo_producto, identificacion_usuario, cantidad)`: valida usuario, producto, cantidad y stock; crea la `Venta`, la agrega a la colección, disminuye el stock del producto y retorna el resultado.
+- `consultar_ventas_usuario(identificacion_usuario)`: recorre y filtra la colección de ventas para obtener las de un usuario específico.
+- `listar_ventas_usuario(identificacion_usuario)`: muestra las ventas de un usuario con el nombre del producto y cantidad.
+
+Todas las operaciones sobre las colecciones se realizan exclusivamente a través de sus métodos.
 
 ### `servicios/archivo_servicio.py` - Clase `ArchivoServicio`
-Servicio encargado de concentrar la lectura y escritura de `datos/productos.json`:
-- `cargar_productos()`: utiliza `json.load()` para recuperar los registros almacenados, valida cada registro y reconstruye los objetos `Producto`.
-- `guardar_productos()`: convierte la colección de objetos `Producto` a una lista de diccionarios y la escribe mediante `json.dump()`.
+Servicio encargado de concentrar la lectura y escritura de los tres archivos JSON:
+- **Productos**: `cargar_productos()` y `guardar_productos()`.
+- **Usuarios**: `cargar_usuarios()` y `guardar_usuarios()`.
+- **Ventas**: `cargar_ventas()` y `guardar_ventas()`.
 
-Ambos métodos utilizan `with open()` y `encoding="utf-8"`, y controlan de forma específica las excepciones de acceso a archivos y de formato.
+Todos los métodos utilizan `with open()` y `encoding="utf-8"`, y controlan de forma específica las excepciones de acceso a archivos (`FileNotFoundError`, `PermissionError`), formato (`json.JSONDecodeError`), estructura inválida, y reconstrucción (`KeyError`, `ValueError`, `TypeError`).
 
 ### `main.py`
-Punto de arranque del programa. Coordina el menú interactivo y la interacción por consola: muestra las opciones, solicita los datos mediante `input()`, crea los objetos `Producto` y `Usuario`, y delega en el servicio `Restaurante`. Además coordina la persistencia: al iniciar crea un `ArchivoServicio`, carga los productos almacenados y los entrega al servicio `Restaurante`; después de registrar, actualizar o eliminar un producto correctamente solicita el guardado de la colección. `main.py` nunca modifica directamente las listas internas del servicio.
+Punto de arranque del programa. Coordina el menú interactivo y la interacción por consola: muestra las opciones, solicita los datos mediante `input()`, crea los objetos `Producto`, `Usuario` y `Venta`, y delega en el servicio `Restaurante`. Coordina la persistencia: al iniciar crea un `ArchivoServicio`, carga las tres colecciones almacenadas y las entrega al servicio `Restaurante`; después de cada operación que modifica datos (registrar/actualizar/eliminar producto, registrar usuario, realizar venta) solicita el guardado de las colecciones afectadas. `main.py` nunca modifica directamente las listas internas del servicio.
 
-## Funcionamiento de datos/productos.json
+## Funcionamiento del Stock
 
-`datos/productos.json` es un archivo de texto con formato JSON que almacena la colección de productos como una **lista de diccionarios**. Cada diccionario representa un producto con las claves `codigo`, `nombre`, `categoria` y `precio`:
+Cada `Producto` mantiene un atributo `stock` (entero no negativo) que representa la cantidad disponible. Al realizar una venta:
+1. Se valida que la cantidad solicitada sea mayor que cero.
+2. Se valida que el stock actual sea suficiente (`producto.stock >= cantidad`).
+3. Si ambas validaciones pasan, se llama a `producto.vender(cantidad)` que disminuye internamente el stock.
+4. Se registra la `Venta` en la colección.
+5. Se guardan `productos.json` (con el stock actualizado) y `ventas.json` (con la nueva venta).
 
-```json
-[
-    {
-        "codigo": "P001",
-        "nombre": "Hamburguesa",
-        "categoria": "Comida rápida",
-        "precio": 5.5
-    }
-]
+Si el stock es insuficiente, la operación se rechaza sin modificar los datos.
+
+## Relación Usuario–Producto mediante Venta
+
+La operación principal de esta semana es la venta, que materializa la relación:
+```
+Usuario registrado  →  Producto existente  →  Validar cantidad y stock  →  Crear Venta(...)  →  Agregar a colección  →  Disminuir stock  →  Guardar ventas.json y productos.json
 ```
 
-El archivo es un medio de persistencia y no reemplaza la clase `Producto`: durante la ejecución el programa continúa trabajando con objetos, y la conversión a diccionarios ocurre solo en el momento de guardar o cargar.
+Una venta no es solo restar stock: queda registrada como objeto `Venta` en una colección, permitiendo consultar el historial por usuario.
 
-## Flujo de Carga
+## Persistencia de Productos, Usuarios y Ventas
 
+Los tres archivos JSON funcionan como medios de persistencia:
+
+### `productos.json`
+Lista de diccionarios con claves: `codigo`, `nombre`, `categoria`, `precio`, `stock`.
+
+### `usuarios.json`
+Lista de diccionarios con claves: `identificacion`, `nombre`, `correo`.
+
+### `ventas.json`
+Lista de diccionarios con claves: `usuario_id`, `producto_codigo`, `cantidad`.
+
+Flujo general:
 ```
-Inicio de la aplicación
-        ↓
-main.py crea ArchivoServicio
-        ↓
-Se intenta leer datos/productos.json
-        ↓
-json.load() recupera la información
-        ↓
-Se valida la estructura obtenida
-        ↓
-Cada registro válido se convierte en Producto(...)
-        ↓
-Los objetos se entregan al servicio Restaurante
-        ↓
-El menú trabaja normalmente con objetos Producto
+OBJETOS → convertir_a_diccionario() → lista de diccionarios → json.dump() → archivo JSON
+archivo JSON → json.load() → diccionarios → reconstrucción de objetos
 ```
 
-## Flujo de Guardado
-
-```
-Usuario registra, actualiza o elimina un producto
-        ↓
-main.py solicita la operación al servicio Restaurante
-        ↓
-Restaurante modifica la colección en memoria
-        ↓
-Los objetos Producto se convierten a diccionarios
-        ↓
-ArchivoServicio utiliza json.dump()
-        ↓
-Se actualiza datos/productos.json
-```
+**Guardado después de cada operación:**
+- Registrar, actualizar o eliminar un producto → `guardar_productos()`.
+- Registrar un usuario → `guardar_usuarios()`.
+- Realizar una venta → `guardar_ventas()` y `guardar_productos()` (por el cambio de stock).
 
 ## Excepciones Controladas
 
-- `FileNotFoundError`: si `productos.json` todavía no existe, el programa inicia normalmente con una colección vacía.
-- `json.JSONDecodeError`: si el archivo existe pero su contenido no es un JSON válido, se muestra un mensaje y el programa inicia con la colección vacía.
-- `PermissionError`: cuando no existen permisos suficientes para leer o escribir el archivo.
-- `KeyError`: al reconstruir productos cuando un registro no contiene alguna de las claves esperadas; el registro defectuoso se ignora sin detener la aplicación.
-- `ValueError` / `TypeError`: para datos inválidos, tanto en las validaciones propias de `Producto` como al reconstruir registros; se ignora el registro defectuoso y se continúa con los demás.
-- `ValueError`: también se mantiene en `main.py` para impedir que precios no numéricos o campos vacíos detengan el programa.
+- `FileNotFoundError`: si alguno de los archivos JSON no existe, la aplicación inicia con la colección correspondiente vacía.
+- `json.JSONDecodeError`: si un archivo existe pero su contenido no es JSON válido, se muestra un mensaje y la colección inicia vacía.
+- `PermissionError`: cuando no hay permisos para leer o escribir; se muestra mensaje y la operación falla controladamente.
+- `KeyError`: al reconstruir objetos cuando un registro no contiene una clave esperada; el registro defectuoso se ignora y se continúa.
+- `ValueError` / `TypeError`: para datos inválidos en reconstrucción o validaciones propias (`Producto`, `Usuario`, `Venta`); el registro se ignora y se continúa.
+- `ValueError`: en `main.py` para impedir que entradas no numéricas o campos vacíos detengan el programa.
 
-No se utilizan capturas genéricas ni `except: pass`; cada excepción responde a una situación concreta del programa y evita que un problema esperado detenga abruptamente toda la aplicación.
+No se utilizan capturas genéricas ni `except: pass`; cada excepción responde a una situación concreta.
 
 ## Menú Interactivo
 
@@ -133,7 +141,10 @@ No se utilizan capturas genéricas ni `except: pass`; cada excepción responde a
 7. Listar usuarios
 ----------------------------------------
 8. Mostrar categorías
-9. Salir
+9. Vender producto
+10. Consultar ventas de usuario
+----------------------------------------
+11. Salir
 ```
 
 ## Instrucciones de Ejecución
@@ -147,33 +158,43 @@ No se utilizan capturas genéricas ni `except: pass`; cada excepción responde a
    ```bash
    python main.py
    ```
-4. Seleccione una opción del menú para registrar, buscar, actualizar o eliminar productos; registrar o listar usuarios; o mostrar las categorías únicas. El programa continúa en ejecución hasta que el usuario selecciona la opción `9. Salir`.
+4. Seleccione una opción del menú. El programa continúa en ejecución hasta que el usuario selecciona la opción `11. Salir`.
 
 ## Comprobación de la Persistencia
 
-Para verificar que los productos permanecen disponibles después de cerrar y volver a iniciar la aplicación, se realizó la siguiente prueba:
+Para verificar que productos, usuarios y ventas permanecen disponibles después de cerrar y volver a iniciar la aplicación, se realizó la siguiente prueba:
 
 1. Se ejecutó `main.py`.
-2. Se registraron productos mediante el menú (código, nombre, categoría y precio).
-3. Se verificó que `datos/productos.json` contenía la información de los productos registrados.
-4. Se cerró completamente el programa.
-5. Se volvió a ejecutar `main.py`.
-6. Se seleccionó la opción `5. Listar productos` y los productos anteriores aparecieron sin necesidad de volver a ingresarlos.
-7. Se actualizó el precio de un producto y luego se eliminó otro.
-8. Se reinició nuevamente la aplicación y se confirmó que tanto la actualización como la eliminación también se conservaron.
+2. Se registró un usuario.
+3. Se registró un producto con stock disponible.
+4. Se realizó una venta (opción 9) indicando identificación, producto y cantidad.
+5. Se confirmó que el stock disminuyó en `productos.json`.
+6. Se verificó que `ventas.json` registró la operación.
+7. Se consultaron las ventas del usuario (opción 10).
+8. Se cerró completamente el programa.
+9. Se volvió a ejecutar `main.py`.
+10. Se confirmó que productos, usuarios y ventas fueron recuperados (listar productos, listar usuarios, consultar ventas).
+11. Se intentó vender una cantidad mayor al stock disponible.
+12. Se confirmó que la operación fue rechazada sin alterar los datos.
 
-También se comprobó el manejo controlado de casos especiales: inicio sin el archivo, un archivo con contenido JSON inválido y registros incompletos, confirmando que en todos los casos el programa responde con un mensaje claro y continúa ejecutándose.
+También se comprobó el manejo controlado de casos especiales: inicio sin archivos, archivos con contenido JSON inválido y registros incompletos, confirmando que en todos los casos el programa responde con un mensaje claro y continúa ejecutándose.
 
 ## Validaciones Consideradas
 
 - Los códigos de productos no pueden repetirse.
 - Las identificaciones de usuarios no pueden repetirse.
-- Los campos obligatorios (código, nombre, categoría, precio, identificación, correo) no pueden estar vacíos.
+- Los campos obligatorios (código, nombre, categoría, precio, stock, identificación, correo) no pueden estar vacíos.
 - El precio debe ser un número mayor que cero.
+- El stock no puede ser negativo.
+- La cantidad a vender debe ser mayor que cero y no superar el stock disponible.
 - El correo electrónico debe contener el carácter `@`.
-- Las entradas incorrectas (opciones inválidas, precios no numéricos) no detienen el programa; muestran un mensaje de error y permiten continuar.
-- Un registro defectuoso o incompleto en `productos.json` se ignora sin detener innecesariamente la aplicación.
+- Las entradas incorrectas (opciones inválidas, valores no numéricos) no detienen el programa; muestran un mensaje de error y permiten continuar.
+- Un registro defectuoso o incompleto en los archivos JSON se ignora sin detener innecesariamente la aplicación.
 
 ## Reflexión
 
-La persistencia mediante JSON separa la responsabilidad del almacenamiento de la lógica de dominio: la clase `Producto` sigue siendo la representación del dominio durante toda la ejecución, el servicio `Restaurante` administra las colecciones con operaciones propias del negocio y el nuevo `ArchivoServicio` concentra exclusivamente la lectura y escritura del archivo. Este desacoplamiento permite evolucionar cada parte de forma independiente. El manejo de excepciones específicas convierte los problemas esperados de acceso a archivos (inexistencia, permisos, formato inválido o registros incompletos) en mensajes controlados en lugar de fallas abruptas, manteniendo la aplicación utilizable incluso cuando los datos externos no están en las mejores condiciones. Comprender cuándo transformar objetos a diccionarios y volver a reconstruirlos es la base para cualquier sistema que necesite conservar su estado más allá de la memoria temporal del programa.
+La persistencia mediante JSON separa la responsabilidad del almacenamiento de la lógica de dominio: las clases `Producto`, `Usuario` y `Venta` siguen siendo la representación del dominio durante toda la ejecución, el servicio `Restaurante` administra las colecciones con operaciones propias del negocio y el `ArchivoServicio` concentra exclusivamente la lectura y escritura de los archivos. Este desacoplamiento permite evolucionar cada parte de forma independiente.
+
+El manejo de excepciones específicas convierte los problemas esperados de acceso a archivos (inexistencia, permisos, formato inválido o registros incompletos) en mensajes controlados en lugar de fallas abruptas, manteniendo la aplicación utilizable incluso cuando los datos externos no están en las mejores condiciones.
+
+La operación de venta demuestra directamente el uso de colecciones para recorrer, comparar y filtrar objetos: buscar usuario y producto en sus respectivas colecciones, validar reglas de negocio, crear el objeto `Venta` que relaciona ambos, agregarlo a la colección de ventas, modificar el stock del producto y persistir los cambios. Comprender cómo los objetos se relacionan mediante referencias (ID y código) y cómo las colecciones permiten navegar esas relaciones es fundamental para modelar sistemas reales.
