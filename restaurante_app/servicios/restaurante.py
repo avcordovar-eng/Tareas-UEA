@@ -12,6 +12,9 @@ class Restaurante:
     ventas. Todos los registros, búsquedas, actualizaciones, eliminaciones
     y consultas se realizan a través de los métodos de esta clase; main.py
     nunca manipula directamente las listas internas.
+
+    Utiliza índices auxiliares (diccionarios) para optimizar búsquedas frecuentes
+    por clave única: código de producto, identificación de usuario y ventas por usuario.
     """
 
     def __init__(self, nombre: str) -> None:
@@ -19,6 +22,10 @@ class Restaurante:
         self._productos: list[Producto] = []
         self._usuarios: list[Usuario] = []
         self._ventas: list[Venta] = []
+
+        self._productos_por_codigo: dict[str, Producto] = {}
+        self._usuarios_por_id: dict[str, Usuario] = {}
+        self._ventas_por_usuario: dict[str, list[Venta]] = {}
 
     @property
     def productos(self) -> list[Producto]:
@@ -51,6 +58,7 @@ class Restaurante:
                       f"ya existía y no se cargó nuevamente.")
                 continue
             self._productos.append(producto)
+            self._productos_por_codigo[producto.codigo] = producto
 
     def cargar_usuarios(self, usuarios: list[Usuario]) -> None:
         """Incorpora los usuarios recuperados desde el archivo JSON.
@@ -65,6 +73,7 @@ class Restaurante:
                       f"ya existía y no se cargó nuevamente.")
                 continue
             self._usuarios.append(usuario)
+            self._usuarios_por_id[usuario.identificacion] = usuario
 
     def cargar_ventas(self, ventas: list[Venta]) -> None:
         """Incorpora las ventas recuperadas desde el archivo JSON.
@@ -74,6 +83,10 @@ class Restaurante:
                 la aplicación.
         """
         self._ventas.extend(ventas)
+        for venta in ventas:
+            if venta.usuario_id not in self._ventas_por_usuario:
+                self._ventas_por_usuario[venta.usuario_id] = []
+            self._ventas_por_usuario[venta.usuario_id].append(venta)
 
     def registrar_producto(self, producto: Producto) -> bool:
         """Registra un producto evitando códigos duplicados.
@@ -85,18 +98,16 @@ class Restaurante:
             print(f"Error: Ya existe un producto con el código '{producto.codigo}'.")
             return False
         self._productos.append(producto)
+        self._productos_por_codigo[producto.codigo] = producto
         return True
 
     def buscar_producto(self, codigo: str) -> Producto | None:
-        """Busca un producto por su código.
+        """Busca un producto por su código usando índice para O(1).
 
         Returns:
             El producto encontrado o None si no existe.
         """
-        for producto in self._productos:
-            if producto.codigo == codigo.strip():
-                return producto
-        return None
+        return self._productos_por_codigo.get(codigo.strip())
 
     def actualizar_producto(self, codigo: str, nombre: str,
                             categoria: str, precio: float) -> bool:
@@ -124,6 +135,7 @@ class Restaurante:
         if producto is None:
             return False
         self._productos.remove(producto)
+        self._productos_por_codigo.pop(codigo.strip(), None)
         return True
 
     def listar_productos(self) -> None:
@@ -142,12 +154,12 @@ class Restaurante:
         Returns:
             True si el usuario se registró, False si la identificación ya existe.
         """
-        for existente in self._usuarios:
-            if existente.identificacion == usuario.identificacion:
-                print(f"Error: Ya existe un usuario con identificación "
-                      f"'{usuario.identificacion}'.")
-                return False
+        if self.buscar_usuario(usuario.identificacion) is not None:
+            print(f"Error: Ya existe un usuario con identificación "
+                  f"'{usuario.identificacion}'.")
+            return False
         self._usuarios.append(usuario)
+        self._usuarios_por_id[usuario.identificacion] = usuario
         return True
 
     def listar_usuarios(self) -> None:
@@ -161,15 +173,12 @@ class Restaurante:
                   f"{usuario.identificacion} - Correo: {usuario.correo}")
 
     def buscar_usuario(self, identificacion: str) -> Usuario | None:
-        """Busca un usuario por su identificación.
+        """Busca un usuario por su identificación usando índice para O(1).
 
         Returns:
             El usuario encontrado o None si no existe.
         """
-        for usuario in self._usuarios:
-            if usuario.identificacion == identificacion.strip():
-                return usuario
-        return None
+        return self._usuarios_por_id.get(identificacion.strip())
 
     def vender_producto(self, codigo_producto: str, identificacion_usuario: str,
                         cantidad: int) -> bool:
@@ -206,13 +215,18 @@ class Restaurante:
 
         venta = Venta(usuario.identificacion, producto.codigo, cantidad)
         self._ventas.append(venta)
+
+        if usuario.identificacion not in self._ventas_por_usuario:
+            self._ventas_por_usuario[usuario.identificacion] = []
+        self._ventas_por_usuario[usuario.identificacion].append(venta)
+
         producto.vender(cantidad)
         print(f"Venta realizada: {producto.nombre} x{cantidad} para "
               f"{usuario.nombre}.")
         return True
 
     def consultar_ventas_usuario(self, identificacion_usuario: str) -> list[Venta]:
-        """Obtiene las ventas realizadas por un usuario.
+        """Obtiene las ventas realizadas por un usuario usando índice para O(1).
 
         Args:
             identificacion_usuario: Identificación del usuario a consultar.
@@ -220,11 +234,7 @@ class Restaurante:
         Returns:
             Lista de ventas del usuario (puede estar vacía).
         """
-        ventas_usuario: list[Venta] = []
-        for venta in self._ventas:
-            if venta.usuario_id == identificacion_usuario:
-                ventas_usuario.append(venta)
-        return ventas_usuario
+        return list(self._ventas_por_usuario.get(identificacion_usuario, []))
 
     def listar_ventas_usuario(self, identificacion_usuario: str) -> None:
         """Muestra las ventas realizadas por un usuario."""

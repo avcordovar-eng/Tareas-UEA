@@ -1,4 +1,4 @@
-# Sistema de Restaurante - Proyecto de POO en Python (Semana 11)
+# Sistema de Restaurante - Proyecto de POO en Python (Semana 12)
 
 ## Información del Estudiante
 
@@ -8,7 +8,9 @@
 
 Sistema de administración de productos, usuarios y ventas de un restaurante, desarrollado con Programación Orientada a Objetos en Python. El programa se ejecuta mediante un menú interactivo desde consola y administra colecciones de objetos (productos, usuarios y ventas) implementadas con las estructuras de datos fundamentales de Python: `list`, `tuple`, `dict` y `set`.
 
-La mejora principal de la Semana 11 consiste en incorporar **persistencia completa de productos, usuarios y ventas mediante archivos JSON**, y la operación de **venta** que relaciona un usuario con un producto, controla el stock disponible y registra la transacción. Ahora, al cerrar la aplicación, toda la información se conserva en `datos/productos.json`, `datos/usuarios.json` y `datos/ventas.json`, y se recupera nuevamente al iniciar una nueva ejecución, reconstruyéndose como objetos `Producto`, `Usuario` y `Venta`.
+La mejora principal de la **Semana 11** consiste en incorporar **persistencia completa de productos, usuarios y ventas mediante archivos JSON**, y la operación de **venta** que relaciona un usuario con un producto, controla el stock disponible y registra la transacción. Ahora, al cerrar la aplicación, toda la información se conserva en `datos/productos.json`, `datos/usuarios.json` y `datos/ventas.json`, y se recupera nuevamente al iniciar una nueva ejecución, reconstruyéndose como objetos `Producto`, `Usuario` y `Venta`.
+
+La mejora de la **Semana 12** consiste en la **optimización de búsquedas, consultas y validaciones mediante índices auxiliares en memoria (diccionarios y conjuntos)**, reduciendo la complejidad temporal de operaciones frecuentes de O(n) a O(1) sin reemplazar las listas principales que se usan para almacenar, recorrer, listar y persistir objetos.
 
 ## Estructura del Proyecto
 
@@ -198,3 +200,42 @@ La persistencia mediante JSON separa la responsabilidad del almacenamiento de la
 El manejo de excepciones específicas convierte los problemas esperados de acceso a archivos (inexistencia, permisos, formato inválido o registros incompletos) en mensajes controlados en lugar de fallas abruptas, manteniendo la aplicación utilizable incluso cuando los datos externos no están en las mejores condiciones.
 
 La operación de venta demuestra directamente el uso de colecciones para recorrer, comparar y filtrar objetos: buscar usuario y producto en sus respectivas colecciones, validar reglas de negocio, crear el objeto `Venta` que relaciona ambos, agregarlo a la colección de ventas, modificar el stock del producto y persistir los cambios. Comprender cómo los objetos se relacionan mediante referencias (ID y código) y cómo las colecciones permiten navegar esas relaciones es fundamental para modelar sistemas reales.
+
+## Mejoras de Rendimiento - Semana 12 (Índices Auxiliares)
+
+Para mejorar el rendimiento en búsquedas, consultas y validaciones frecuentes, se incorporaron índices auxiliares (diccionarios) en la clase `Restaurante` que se reconstruyen al cargar los datos desde JSON y se mantienen sincronizados en cada operación que modifica los datos.
+
+### Índices Implementados
+
+| Índice | Estructura | Clave | Propósito |
+|--------|------------|-------|-----------|
+| `_productos_por_codigo` | `dict[str, Producto]` | `producto.codigo` | Búsqueda O(1) de producto por código; validación de duplicados al registrar |
+| `_usuarios_por_id` | `dict[str, Usuario]` | `usuario.identificacion` | Búsqueda O(1) de usuario por identificación; validación de duplicados al registrar |
+| `_ventas_por_usuario` | `dict[str, list[Venta]]` | `venta.usuario_id` | Consulta O(1) de ventas de un usuario (evita recorrer todas las ventas) |
+| `obtener_categorias()` | `set[str]` | `producto.categoria` | Obtención de categorías únicas (ya existente en Semana 11) |
+
+### Operaciones Optimizadas
+
+| Operación | Antes (Semana 11) | Después (Semana 12) | Mejora |
+|-----------|-------------------|---------------------|--------|
+| `buscar_producto(codigo)` | Recorrido lineal O(n) sobre `_productos` | Lookup en dict O(1) | Búsqueda instantánea |
+| `buscar_usuario(identificacion)` | Recorrido lineal O(n) sobre `_usuarios` | Lookup en dict O(1) | Búsqueda instantánea |
+| `consultar_ventas_usuario(id)` | Recorrido lineal O(n) sobre `_ventas` filtrando | Lookup en dict O(1) | Consulta instantánea |
+| `registrar_producto()` | `buscar_producto` lineal para validar duplicados | Lookup en dict O(1) | Validación instantánea |
+| `registrar_usuario()` | Recorrido lineal para validar duplicados | Lookup en dict O(1) | Validación instantánea |
+| `vender_producto()` | Dos búsquedas lineales (usuario + producto) | Dos lookups en dict O(1) | Validación instantánea |
+| `eliminar_producto()` | `buscar_producto` lineal + remover | Lookup en dict O(1) + remover | Búsqueda instantánea |
+
+### Sincronización de Índices
+
+Los índices se mantienen coherentes automáticamente:
+
+- **Al cargar datos** (`cargar_productos`, `cargar_usuarios`, `cargar_ventas`): se reconstruyen los índices a partir de los objetos recuperados desde JSON.
+- **Al registrar** (`registrar_producto`, `registrar_usuario`): se agrega el objeto a la lista principal y su clave al índice correspondiente.
+- **Al vender** (`vender_producto`): se agrega la venta a la lista principal y al índice `_ventas_por_usuario` agrupada por `usuario_id`.
+- **Al eliminar** (`eliminar_producto`): se remueve el objeto de la lista principal y su entrada del índice.
+- **Al actualizar** (`actualizar_producto`): el índice no requiere cambios porque la clave (código) no se modifica.
+
+### Principio de Diseño
+
+> **Optimizar no significa reemplazar todas las listas.** Se mantienen las colecciones principales (`_productos`, `_usuarios`, `_ventas`) para almacenar, recorrer en orden, listar y persistir objetos. Los índices auxiliares (`dict`, `set`) se usan únicamente cuando aportan una mejora clara en búsquedas, consultas o validaciones por clave conocida.

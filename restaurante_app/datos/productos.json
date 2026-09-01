@@ -1,1 +1,16 @@
-[]
+[
+    {
+        "codigo": "P001",
+        "nombre": "Hamburguesa Deluxe",
+        "categoria": "Comida",
+        "precio": 18.0,
+        "stock": 8
+    },
+    {
+        "codigo": "P003",
+        "nombre": "Refresco",
+        "categoria": "Bebida",
+        "precio": 3.0,
+        "stock": 30
+    }
+]
