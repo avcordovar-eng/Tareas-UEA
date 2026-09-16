@@ -1,0 +1,58 @@
+[
+    {
+        "codigo": "P001",
+        "nombre": "Hamburguesa Deluxe",
+        "categoria": "Plato fuerte",
+        "precio": 18.0,
+        "cantidad": 8
+    },
+    {
+        "codigo": "P002",
+        "nombre": "Lomo Saltado",
+        "categoria": "Plato fuerte",
+        "precio": 12.5,
+        "cantidad": 10
+    },
+    {
+        "codigo": "P003",
+        "nombre": "Ceviche de camarón",
+        "categoria": "Entrada",
+        "precio": 9.75,
+        "cantidad": 12
+    },
+    {
+        "codigo": "P004",
+        "nombre": "Empanadas de verde",
+        "categoria": "Entrada",
+        "precio": 4.0,
+        "cantidad": 20
+    },
+    {
+        "codigo": "P005",
+        "nombre": "Refresco",
+        "categoria": "Bebida",
+        "precio": 3.0,
+        "cantidad": 30
+    },
+    {
+        "codigo": "P006",
+        "nombre": "Jugo de maracuyá",
+        "categoria": "Bebida",
+        "precio": 2.5,
+        "cantidad": 25
+    },
+    {
+        "codigo": "P007",
+        "nombre": "Café pasado",
+        "categoria": "Bebida",
+        "precio": 1.75,
+        "cantidad": 40
+    },
+    {
+        "codigo": "P008",
+        "nombre": "Torta tres leches",
+        "categoria": "Postre",
+        "precio": 5.5,
+        "cantidad": 6
+    }
+]
